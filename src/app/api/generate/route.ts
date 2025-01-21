@@ -3,7 +3,7 @@ import Replicate from 'replicate';
 
 export async function POST(request: Request) {
   try {
-    const { prompt } = await request.json();
+    const { panels } = await request.json();
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return NextResponse.json(
@@ -16,41 +16,35 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN,
     });
 
-    // Create a prediction
-    const prediction = await replicate.predictions.create({
-      version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-      input: {
-        prompt,
-        negative_prompt: "low quality, blurry, distorted",
-        width: 768,
-        height: 768,
+    // Generate images for all panels in parallel
+    const imagePromises = panels.map(async (panel: { imagePrompt: string }) => {
+      const output = await replicate.run(
+        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+        {
+          input: {
+            prompt: panel.imagePrompt,
+            negative_prompt: "low quality, blurry, distorted, text, words, letters",
+            width: 768,
+            height: 768,
+          }
+        }
+      );
+
+      if (!Array.isArray(output) || !output[0] || typeof output[0] !== 'string') {
+        throw new Error('Invalid response format from Replicate');
       }
+
+      return output[0];
     });
 
-    // Wait for the prediction to complete
-    let result = await replicate.predictions.get(prediction.id);
-    while (result.status !== "succeeded" && result.status !== "failed") {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      result = await replicate.predictions.get(prediction.id);
-      console.log('Prediction status:', result.status);
-    }
+    const imageUrls = await Promise.all(imagePromises);
 
-    if (result.status === "failed") {
-      throw new Error('Image generation failed');
-    }
-
-    if (!result.output || !result.output[0]) {
-      throw new Error('No output received from the model');
-    }
-
-    const imageUrl = result.output[0];
-    console.log('Generated image URL:', imageUrl);
-
-    return NextResponse.json({ imageUrl });
+    // Return array of image URLs
+    return NextResponse.json({ imageUrls });
   } catch (error) {
-    console.error('Error generating image:', error);
+    console.error('Error generating images:', error);
     return NextResponse.json(
-      { error: 'Failed to generate image' },
+      { error: 'Failed to generate images' },
       { status: 500 }
     );
   }
