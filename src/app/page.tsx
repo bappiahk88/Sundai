@@ -57,9 +57,9 @@ export default function Home() {
 
       const imageData = await imageResponse.json();
       setImageUrls(imageData.imageUrls);
-    } catch (err: any) {
-      console.error('Error:', err);
-      setError(err?.message || 'An error occurred');
+    } catch (error: unknown) {
+      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function Home() {
         
         <p className="text-lg text-center max-w-2xl">
           Create your own comic book adventures with our AI-powered generator! 
-          Enter a theme and we'll create a three-panel story with custom artwork.
+          Enter a theme and we&apos;ll create a three-panel story with custom artwork.
         </p>
 
         <div className="w-full max-w-2xl flex flex-col gap-4">

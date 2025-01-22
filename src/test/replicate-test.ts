@@ -1,4 +1,4 @@
-const Replicate = require('replicate');
+import Replicate from 'replicate';
 
 async function testReplicateAPI() {
   try {
